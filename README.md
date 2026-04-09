@@ -14,7 +14,7 @@
 
 ## 📋 Sobre Este Proyecto
 
-Análisis de seguridad realizado sobre una plataforma **Moodle** de la institución **CUN**, centrado en el estudio del código HTML/JavaScript del lado del cliente. Este proyecto documenta vulnerabilidades potenciales, vectores de ataque y recomendaciones de mitigación.
+Análisis de seguridad realizado sobre una plataforma **Moodle** de la institución ******N**, centrado en el estudio del código HTML/JavaScript del lado del cliente. Este proyecto documenta vulnerabilidades potenciales, vectores de ataque y recomendaciones de mitigación.
 
 > ⚠️ **Nota:** Este análisis fue realizado con fines educativos y de investigación en seguridad ofensiva.
 
@@ -26,8 +26,8 @@ Análisis de seguridad realizado sobre una plataforma **Moodle** de la instituci
 
 | Dato Expuesto | Riesgo |
 |---------------|--------|
-| `userId: 95655` | Identificador único de base de datos |
-| `sesskey: "1hLEpTJW2B"` | **CRÍTICO** - Token de sesión vulnerable a XSS |
+| `userId: *******5` | Identificador único de base de datos |
+| `sesskey: "*****B"` | **CRÍTICO** - Token de sesión vulnerable a XSS |
 
 ```
 📌 Impacto: Si un atacante logra ejecutar scripts en el navegador del usuario, 
