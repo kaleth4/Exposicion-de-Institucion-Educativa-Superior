@@ -6,7 +6,7 @@
 ![Moodle](https://img.shields.io/badge/Plataforma-Moodle%20CUN-red?style=flat-square&logo=book)
 ![Status](https://img.shields.io/badge/Estado-Activo-brightgreen?style=flat-square)
 
-**Análisando, documentando y protegiendo.** 🔍
+**Análizando, documentando y protegiendo.** 🔍
 
 </div>
 
